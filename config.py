@@ -16,8 +16,8 @@ FYERS_ACCESS_TOKEN = os.environ["FYERS_ACCESS_TOKEN"]  # generated token (valid 
 # ---------------------------------------------------------------------------
 # Backtest date range (HARDCODED — edit for each run)
 # ---------------------------------------------------------------------------
-START_DATE = date(2026, 7, 16)
-END_DATE = date(2026, 7, 17)
+START_DATE = date(2025, 6, 1)
+END_DATE = date(2025, 6, 30)
 
 # ---------------------------------------------------------------------------
 # Weekly expiry handling (HARDCODED — edit as needed)
@@ -35,12 +35,22 @@ EXPIRY_OVERRIDES = {
 }
 
 # ---------------------------------------------------------------------------
+# Pivot lookback buffer: R1/S1 for a given day are derived from the PREVIOUS
+# day's OHLC, so we need at least 1 extra prior trading day of data. We fetch
+# extra *calendar* days (not trading days) to safely cover weekends/holidays,
+# then trim the output back down to [START_DATE, END_DATE] after computing
+# indicators. 7 covers any single-weekend/holiday gap; increase if your
+# START_DATE follows a long holiday break.
+# ---------------------------------------------------------------------------
+PIVOT_LOOKBACK_CALENDAR_DAYS = 7
+
+# ---------------------------------------------------------------------------
 # Instrument / strategy params
 # ---------------------------------------------------------------------------
 INDEX_SYMBOL = "NSE:NIFTY50-INDEX"
 UNDERLYING_NAME = "NIFTY"      # used in option symbol construction
-STRIKE_STEP = 100               # Nifty strike interval
-LOT_SIZE = 65                  # update to current NSE lot size for your backtest period
+STRIKE_STEP = 50               # Nifty strike interval
+LOT_SIZE = 75                  # update to current NSE lot size for your backtest period
 
 TIMEFRAME_MINUTES = 5
 SUPERTREND_PERIOD = 7
