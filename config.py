@@ -16,8 +16,8 @@ FYERS_ACCESS_TOKEN = os.environ["FYERS_ACCESS_TOKEN"]  # generated token (valid 
 # ---------------------------------------------------------------------------
 # Backtest date range (HARDCODED — edit for each run)
 # ---------------------------------------------------------------------------
-START_DATE = date(2026, 7, 16)
-END_DATE = date(2026, 7, 16)
+START_DATE = date(2026, 7, 17)
+END_DATE = date(2026, 7, 17)
 
 # ---------------------------------------------------------------------------
 # Weekly expiry handling (HARDCODED — edit as needed)
