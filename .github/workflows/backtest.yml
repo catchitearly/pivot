@@ -1,0 +1,33 @@
+name: Nifty Supertrend Pivot Backtest
+
+on:
+  workflow_dispatch: {}   # manual trigger from the Actions tab
+  # schedule:
+  #   - cron: "30 10 * * 1-5"  # example: 10:30 UTC (4:00pm IST) on weekdays
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run backtest
+        env:
+          FYERS_CLIENT_ID: ${{ secrets.FYERS_CLIENT_ID }}
+          FYERS_ACCESS_TOKEN: ${{ secrets.FYERS_ACCESS_TOKEN }}
+        run: python backtest.py
+
+      - name: Upload results
+        uses: actions/upload-artifact@v4
+        with:
+          name: backtest-results
+          path: results/
