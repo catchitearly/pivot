@@ -16,8 +16,8 @@ FYERS_ACCESS_TOKEN = os.environ["FYERS_ACCESS_TOKEN"]  # generated token (valid 
 # ---------------------------------------------------------------------------
 # Backtest date range (HARDCODED — edit for each run)
 # ---------------------------------------------------------------------------
-START_DATE = date(2026, 7, 17)
-END_DATE = date(2026, 7, 17)
+START_DATE = date(2026, 7, 14)
+END_DATE = date(2026, 7, 14)
 
 # ---------------------------------------------------------------------------
 # Weekly expiry handling (HARDCODED — edit as needed)
@@ -42,7 +42,7 @@ EXPIRY_OVERRIDES = {
 # indicators. 7 covers any single-weekend/holiday gap; increase if your
 # START_DATE follows a long holiday break.
 # ---------------------------------------------------------------------------
-PIVOT_LOOKBACK_CALENDAR_DAYS = 7
+PIVOT_LOOKBACK_CALENDAR_DAYS = 3
 
 # ---------------------------------------------------------------------------
 # Instrument / strategy params
