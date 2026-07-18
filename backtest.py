@@ -63,6 +63,9 @@ def run():
     events = strategy.generate_events(nifty_df)
     print(f"Generated {len(events)} raw entry/exit events.")
 
+    # persist full indicator series for the dashboard (price, R1/S1, supertrend)
+    nifty_df.to_csv(f"{config.OUTPUT_DIR}/nifty_indicators.csv", index=False)
+
     option_cache: dict = {}
     trades = []
     open_trade = None
@@ -88,6 +91,9 @@ def run():
                 "entry_price": price,
                 "entry_spot": ev.spot,
                 "entry_reason": ev.reason,
+                "entry_pivot": ev.pivot,
+                "entry_r1": ev.r1,
+                "entry_s1": ev.s1,
             }
         elif ev.kind == "EXIT" and open_trade is not None:
             open_trade.update({
@@ -95,6 +101,9 @@ def run():
                 "exit_price": price,
                 "exit_spot": ev.spot,
                 "exit_reason": ev.reason,
+                "exit_pivot": ev.pivot,
+                "exit_r1": ev.r1,
+                "exit_s1": ev.s1,
             })
             # short option: profit when price falls
             open_trade["pnl_points"] = open_trade["entry_price"] - open_trade["exit_price"]
@@ -121,6 +130,9 @@ def run():
     print(json.dumps(summary, indent=2, default=str))
     print(f"Trade log: {config.TRADE_LOG_CSV}")
     print(f"Summary:   {config.SUMMARY_JSON}")
+
+    import generate_dashboard
+    generate_dashboard.build()
 
 
 if __name__ == "__main__":

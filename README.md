@@ -11,7 +11,11 @@ Strategy:
 - `indicators.py` — Pivot (R1/S1) and Supertrend(7,3) calculations.
 - `symbols.py` — Weekly expiry date resolution + Fyers option symbol construction.
 - `strategy.py` — Entry/exit signal generation.
-- `backtest.py` — Orchestrates the full run, writes `results/trade_log.csv` and `results/summary.json`.
+- `backtest.py` — Orchestrates the full run, writes `results/trade_log.csv`, `results/nifty_indicators.csv`, `results/summary.json`, and triggers the dashboard build.
+- `generate_dashboard.py` / `dashboard_template.html` — Builds `results/dashboard.html`, a self-contained interactive dashboard: Nifty price with R1/S1 + Supertrend overlay and entry/exit markers, a cumulative P&L chart, and a sortable trade log table (open it directly in a browser, no server needed).
+
+## Output columns
+`trade_log.csv` includes the pivot levels active at entry/exit: `entry_pivot`, `entry_r1`, `entry_s1`, `exit_pivot`, `exit_r1`, `exit_s1`, alongside the usual entry/exit time, strike, expiry, prices, and P&L.
 
 ## ⚠️ Before your first real run
 Fyers does not publish a historical symbol master (expired option contracts drop

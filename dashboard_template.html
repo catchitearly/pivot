@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Nifty Pivot + Supertrend — Backtest Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/plotly.js-dist-min@2/plotly.min.js"></script>
+<style>
+  :root{
+    --bg:#0B0E14;
+    --panel:#12161F;
+    --panel-2:#161B26;
+    --border:#232938;
+    --text:#E6E9EF;
+    --muted:#7C8399;
+    --accent:#4FD1C5;
+    --bull:#3ECF8E;
+    --bear:#F2545B;
+    --r1:#D9A441;
+    --s1:#8C86D6;
+    --pivot:#5B6478;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk', sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  header{
+    padding:28px 36px 20px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+  }
+  header .title-block{display:flex; align-items:baseline; gap:14px;}
+  header h1{
+    font-size:20px;
+    font-weight:600;
+    margin:0;
+    letter-spacing:0.2px;
+  }
+  header .ticker{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+    color:var(--muted);
+    letter-spacing:0.5px;
+  }
+  .status-dot{
+    display:inline-block;
+    width:8px; height:8px;
+    border-radius:50%;
+    background:var(--accent);
+    margin-right:6px;
+    box-shadow:0 0 8px var(--accent);
+  }
+
+  .stats{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));
+    gap:1px;
+    background:var(--border);
+    border:1px solid var(--border);
+    margin:24px 36px 0;
+    border-radius:6px;
+    overflow:hidden;
+  }
+  .stat{
+    background:var(--panel);
+    padding:16px 18px;
+  }
+  .stat .label{
+    font-size:11px;
+    text-transform:uppercase;
+    letter-spacing:0.8px;
+    color:var(--muted);
+    margin-bottom:6px;
+  }
+  .stat .value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:22px;
+    font-weight:600;
+  }
+  .stat .value.pos{color:var(--bull);}
+  .stat .value.neg{color:var(--bear);}
+
+  main{padding:24px 36px 48px;}
+
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:6px;
+    margin-bottom:20px;
+    overflow:hidden;
+  }
+  .panel-head{
+    padding:14px 18px;
+    border-bottom:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+  }
+  .panel-head h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:1px;
+    font-weight:600;
+    margin:0;
+    color:var(--muted);
+  }
+  .legend-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    font-size:11px;
+    font-family:'IBM Plex Mono', monospace;
+    color:var(--muted);
+    margin-left:14px;
+  }
+  .legend-chip .sw{width:10px; height:3px; display:inline-block; border-radius:2px;}
+
+  #priceChart, #pnlChart{width:100%; height:460px;}
+  #pnlChart{height:280px;}
+
+  table{
+    width:100%;
+    border-collapse:collapse;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:12px;
+  }
+  thead th{
+    position:sticky; top:0;
+    background:var(--panel-2);
+    text-align:left;
+    padding:10px 12px;
+    font-weight:500;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    font-size:10px;
+    cursor:pointer;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  thead th:hover{color:var(--accent);}
+  thead th::after{content:attr(data-sort-icon); margin-left:4px; color:var(--accent);}
+  tbody td{
+    padding:9px 12px;
+    border-bottom:1px solid var(--border);
+    white-space:nowrap;
+  }
+  tbody tr:hover{background:var(--panel-2);}
+  .tag{
+    display:inline-block;
+    padding:2px 7px;
+    border-radius:3px;
+    font-size:10px;
+    font-weight:600;
+    letter-spacing:0.4px;
+  }
+  .tag.PE{background:rgba(62,207,142,0.15); color:var(--bull);}
+  .tag.CE{background:rgba(242,84,91,0.15); color:var(--bear);}
+  .pnl-cell.pos{color:var(--bull);}
+  .pnl-cell.neg{color:var(--bear);}
+  .table-wrap{max-height:420px; overflow:auto;}
+  .empty-state{padding:40px; text-align:center; color:var(--muted); font-size:13px;}
+
+  footer{
+    padding:20px 36px 40px;
+    color:var(--muted);
+    font-size:11px;
+    font-family:'IBM Plex Mono', monospace;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="title-block">
+    <h1>Nifty · Pivot(R1/S1) + Supertrend(7,3)</h1>
+  </div>
+  <div class="ticker"><span class="status-dot"></span>SHORT-OPTION BACKTEST · 5-MIN</div>
+</header>
+
+<div class="stats" id="statsRow"></div>
+
+<main>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Nifty — Price, Pivot Levels &amp; Supertrend</h2>
+      <div>
+        <span class="legend-chip"><span class="sw" style="background:var(--text)"></span>Close</span>
+        <span class="legend-chip"><span class="sw" style="background:var(--r1)"></span>R1</span>
+        <span class="legend-chip"><span class="sw" style="background:var(--s1)"></span>S1</span>
+        <span class="legend-chip"><span class="sw" style="background:var(--bull)"></span>Supertrend ↑</span>
+        <span class="legend-chip"><span class="sw" style="background:var(--bear)"></span>Supertrend ↓</span>
+      </div>
+    </div>
+    <div id="priceChart"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Cumulative P&amp;L</h2>
+    </div>
+    <div id="pnlChart"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-head">
+      <h2>Trade Log</h2>
+    </div>
+    <div class="table-wrap">
+      <table id="tradeTable">
+        <thead><tr id="tableHead"></tr></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState" style="display:none;">No trades in this backtest window.</div>
+    </div>
+  </div>
+
+</main>
+
+<footer>Generated by backtest.py · pure signal-based entries/exits, no slippage or brokerage modeled</footer>
+
+<script>
+const PRICE = __PRICE_DATA__;
+const MARKERS = __MARKERS__;
+const PNL = __PNL_DATA__;
+const ROWS = __TABLE_ROWS__;
+const SUMMARY = __SUMMARY__;
+
+// ---------- Stat cards ----------
+const statsRow = document.getElementById('statsRow');
+const pnlPositive = SUMMARY.total_pnl_rupees >= 0;
+const stats = [
+  {label:'Total Trades', value: SUMMARY.total_trades, cls:''},
+  {label:'Total P&L (₹)', value: SUMMARY.total_pnl_rupees.toLocaleString('en-IN', {maximumFractionDigits:2}), cls: pnlPositive ? 'pos' : 'neg'},
+  {label:'Win Rate', value: SUMMARY.win_rate_pct.toFixed(1) + '%', cls:''},
+  {label:'Avg P&L / Trade', value: SUMMARY.avg_pnl_rupees.toLocaleString('en-IN', {maximumFractionDigits:2}), cls: SUMMARY.avg_pnl_rupees>=0 ? 'pos':'neg'},
+  {label:'Best Trade', value: SUMMARY.max_win_rupees.toLocaleString('en-IN', {maximumFractionDigits:2}), cls:'pos'},
+  {label:'Worst Trade', value: SUMMARY.max_loss_rupees.toLocaleString('en-IN', {maximumFractionDigits:2}), cls:'neg'},
+];
+statsRow.innerHTML = stats.map(s => `
+  <div class="stat">
+    <div class="label">${s.label}</div>
+    <div class="value ${s.cls}">${s.value}</div>
+  </div>`).join('');
+
+// ---------- Price + indicators chart ----------
+const plotLayout = {
+  paper_bgcolor:'#12161F',
+  plot_bgcolor:'#12161F',
+  font:{color:'#7C8399', family:'IBM Plex Mono, monospace', size:11},
+  margin:{l:55, r:20, t:10, b:40},
+  xaxis:{gridcolor:'#232938', showgrid:true, rangeslider:{visible:false}},
+  yaxis:{gridcolor:'#232938', showgrid:true, title:'Nifty'},
+  legend:{orientation:'h', y:1.08, font:{color:'#7C8399'}},
+  hovermode:'x unified',
+};
+
+const priceTraces = [
+  {x:PRICE.x, y:PRICE.close, type:'scatter', mode:'lines', name:'Close', line:{color:'#E6E9EF', width:1.4}},
+  {x:PRICE.x, y:PRICE.r1, type:'scatter', mode:'lines', name:'R1', line:{color:'#D9A441', width:1.2, dash:'dot'}},
+  {x:PRICE.x, y:PRICE.s1, type:'scatter', mode:'lines', name:'S1', line:{color:'#8C86D6', width:1.2, dash:'dot'}},
+  {x:PRICE.st_bull_x, y:PRICE.st_bull_y, type:'scatter', mode:'lines', name:'Supertrend ↑', line:{color:'#3ECF8E', width:1.6}, connectgaps:false},
+  {x:PRICE.st_bear_x, y:PRICE.st_bear_y, type:'scatter', mode:'lines', name:'Supertrend ↓', line:{color:'#F2545B', width:1.6}, connectgaps:false},
+  {x:MARKERS.pe_entry_x, y:MARKERS.pe_entry_y, type:'scatter', mode:'markers', name:'Sell PE',
+    marker:{symbol:'triangle-up', size:9, color:'#3ECF8E', line:{color:'#0B0E14', width:1}}},
+  {x:MARKERS.ce_entry_x, y:MARKERS.ce_entry_y, type:'scatter', mode:'markers', name:'Sell CE',
+    marker:{symbol:'triangle-down', size:9, color:'#F2545B', line:{color:'#0B0E14', width:1}}},
+  {x:MARKERS.exit_x, y:MARKERS.exit_y, type:'scatter', mode:'markers', name:'Exit',
+    marker:{symbol:'x', size:7, color:'#7C8399'}},
+];
+
+Plotly.newPlot('priceChart', priceTraces, plotLayout, {responsive:true, displaylogo:false});
+
+// ---------- PnL chart ----------
+const pnlTraces = [
+  {x:PNL.x, y:PNL.cum_pnl, type:'scatter', mode:'lines', name:'Cumulative P&L', line:{color:'#4FD1C5', width:1.8}, fill:'tozeroy', fillcolor:'rgba(79,209,197,0.08)'},
+];
+const pnlLayout = Object.assign({}, plotLayout, {
+  yaxis:{gridcolor:'#232938', showgrid:true, title:'₹'},
+  showlegend:false,
+});
+Plotly.newPlot('pnlChart', pnlTraces, pnlLayout, {responsive:true, displaylogo:false});
+
+// ---------- Trade table ----------
+const COLUMN_LABELS = {
+  entry_time:'Entry Time', exit_time:'Exit Time', option_type:'Side', strike:'Strike', expiry:'Expiry',
+  entry_pivot:'Pivot', entry_r1:'R1', entry_s1:'S1',
+  entry_price:'Entry ₹', exit_price:'Exit ₹', pnl_points:'PnL (pts)', pnl_rupees:'PnL (₹)',
+  entry_reason:'Entry Reason', exit_reason:'Exit Reason'
+};
+
+const tableHead = document.getElementById('tableHead');
+const tableBody = document.getElementById('tableBody');
+const emptyState = document.getElementById('emptyState');
+
+if (!ROWS.length) {
+  document.getElementById('tradeTable').style.display = 'none';
+  emptyState.style.display = 'block';
+} else {
+  const cols = Object.keys(ROWS[0]);
+  let sortState = {col:null, dir:1};
+
+  function renderHead(){
+    tableHead.innerHTML = cols.map(c => `<th data-col="${c}" data-sort-icon="${sortState.col===c ? (sortState.dir===1?'▲':'▼') : ''}">${COLUMN_LABELS[c]||c}</th>`).join('');
+    tableHead.querySelectorAll('th').forEach(th => {
+      th.addEventListener('click', () => {
+        const col = th.dataset.col;
+        sortState.dir = (sortState.col === col) ? -sortState.dir : 1;
+        sortState.col = col;
+        sortRows();
+        renderHead();
+        renderBody();
+      });
+    });
+  }
+
+  function sortRows(){
+    if (!sortState.col) return;
+    ROWS.sort((a,b) => {
+      let va = a[sortState.col], vb = b[sortState.col];
+      if (typeof va === 'string' && !isNaN(parseFloat(va)) && va.trim() !== '') { va = parseFloat(va); vb = parseFloat(vb); }
+      if (va < vb) return -1 * sortState.dir;
+      if (va > vb) return 1 * sortState.dir;
+      return 0;
+    });
+  }
+
+  function renderBody(){
+    tableBody.innerHTML = ROWS.map(r => {
+      const pnlCls = r.pnl_rupees >= 0 ? 'pos' : 'neg';
+      return '<tr>' + cols.map(c => {
+        if (c === 'option_type') return `<td><span class="tag ${r[c]}">${r[c]}</span></td>`;
+        if (c === 'pnl_rupees' || c === 'pnl_points') return `<td class="pnl-cell ${pnlCls}">${r[c]}</td>`;
+        return `<td>${r[c] !== null && r[c] !== undefined ? r[c] : ''}</td>`;
+      }).join('') + '</tr>';
+    }).join('');
+  }
+
+  renderHead();
+  renderBody();
+}
+</script>
+
+</body>
+</html>
