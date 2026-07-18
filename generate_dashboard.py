@@ -33,9 +33,21 @@ def _segment_by_direction(df: pd.DataFrame):
 
 
 def build():
-    nifty = pd.read_csv(f"{config.OUTPUT_DIR}/nifty_indicators.csv", parse_dates=["timestamp"])
+    nifty = pd.read_csv(f"{config.OUTPUT_DIR}/nifty_indicators.csv")
+    nifty["timestamp"] = pd.to_datetime(nifty["timestamp"])
+    for col in ("close", "r1", "s1", "pivot", "supertrend", "supertrend_dir"):
+        if col in nifty.columns:
+            nifty[col] = pd.to_numeric(nifty[col], errors="coerce")
     trades_path = f"{config.OUTPUT_DIR}/trade_log.csv"
-    trades = pd.read_csv(trades_path, parse_dates=["entry_time", "exit_time"]) if os.path.exists(trades_path) and os.path.getsize(trades_path) > 0 else pd.DataFrame()
+    trades = pd.DataFrame()
+    if os.path.exists(trades_path) and os.path.getsize(trades_path) > 0:
+        try:
+            trades = pd.read_csv(trades_path, parse_dates=["entry_time", "exit_time"])
+        except (pd.errors.EmptyDataError, ValueError):
+            trades = pd.DataFrame()
+    # drop rows with no completed exit (shouldn't normally happen, but guards against partial data)
+    if not trades.empty and "exit_time" in trades.columns:
+        trades = trades.dropna(subset=["exit_time"]).reset_index(drop=True)
 
     with open(f"{config.OUTPUT_DIR}/summary.json") as f:
         summary = json.load(f)

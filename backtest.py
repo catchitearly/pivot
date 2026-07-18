@@ -13,7 +13,7 @@ Pipeline:
 
 import json
 import os
-from datetime import date
+from datetime import date, timedelta
 
 import pandas as pd
 
@@ -47,10 +47,12 @@ def run():
     os.makedirs(config.OUTPUT_DIR, exist_ok=True)
     fyers = fyers_client.get_fyers_session()
 
-    print(f"Fetching Nifty 5-min data {config.START_DATE} -> {config.END_DATE} ...")
+    print(f"Fetching Nifty 5-min data {config.START_DATE} -> {config.END_DATE} "
+          f"(+{config.PIVOT_LOOKBACK_CALENDAR_DAYS}d lookback for pivot calc) ...")
+    fetch_start = config.START_DATE - timedelta(days=config.PIVOT_LOOKBACK_CALENDAR_DAYS)
     nifty_df = fyers_client.fetch_history(
         fyers, config.INDEX_SYMBOL, str(config.TIMEFRAME_MINUTES),
-        config.START_DATE, config.END_DATE,
+        fetch_start, config.END_DATE,
     )
     if nifty_df.empty:
         raise RuntimeError("No Nifty data returned — check symbol/date range/token.")
@@ -59,6 +61,15 @@ def run():
     nifty_df = indicators.add_supertrend(
         nifty_df, period=config.SUPERTREND_PERIOD, multiplier=config.SUPERTREND_MULTIPLIER
     )
+
+    # trim the lookback buffer back off now that pivots/supertrend are computed
+    nifty_df = nifty_df[nifty_df["timestamp"].dt.date >= config.START_DATE].reset_index(drop=True)
+    if nifty_df.empty:
+        raise RuntimeError(
+            "No candles remain after trimming to START_DATE — this usually means "
+            "START_DATE has no prior trading day within PIVOT_LOOKBACK_CALENDAR_DAYS. "
+            "Increase PIVOT_LOOKBACK_CALENDAR_DAYS in config.py."
+        )
 
     events = strategy.generate_events(nifty_df)
     print(f"Generated {len(events)} raw entry/exit events.")
@@ -111,7 +122,13 @@ def run():
             trades.append(open_trade)
             open_trade = None
 
-    trade_df = pd.DataFrame(trades)
+    TRADE_COLUMNS = [
+        "entry_time", "option_type", "expiry", "strike", "symbol",
+        "entry_price", "entry_spot", "entry_reason", "entry_pivot", "entry_r1", "entry_s1",
+        "exit_time", "exit_price", "exit_spot", "exit_reason", "exit_pivot", "exit_r1", "exit_s1",
+        "pnl_points", "pnl_rupees",
+    ]
+    trade_df = pd.DataFrame(trades, columns=TRADE_COLUMNS)
     trade_df.to_csv(config.TRADE_LOG_CSV, index=False)
 
     summary = {
